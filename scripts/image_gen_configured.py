@@ -158,6 +158,22 @@ def _read_auth_key(codex_home: Path, provider_name: Optional[str]) -> Tuple[Opti
     return None, None
 
 
+DEFAULT_OPENAI_USER_AGENT = "CodexImagegen/1.0"
+
+
+def _ensure_openai_custom_headers(env: Dict[str, str]) -> bool:
+    headers = env.get("OPENAI_CUSTOM_HEADERS", "")
+    lines = [line for line in headers.splitlines() if line.strip()]
+    for line in lines:
+        name, sep, _value = line.partition(":")
+        if sep and name.strip().lower() == "user-agent":
+            return False
+
+    lines.append(f"User-Agent: {DEFAULT_OPENAI_USER_AGENT}")
+    env["OPENAI_CUSTOM_HEADERS"] = "\n".join(lines)
+    return True
+
+
 def _resolve_provider_env() -> Tuple[Dict[str, str], Optional[str], Optional[str]]:
     codex_home = _codex_home()
     config = _read_codex_config(codex_home)
@@ -200,6 +216,8 @@ def _resolve_provider_env() -> Tuple[Dict[str, str], Optional[str], Optional[str
 
     if not api_key_source and env.get("OPENAI_API_KEY"):
         api_key_source = "OPENAI_API_KEY"
+
+    _ensure_openai_custom_headers(env)
 
     return env, base_url_source, api_key_source
 
